@@ -1,0 +1,318 @@
+---
+title: "Network Analysis y Visualización de Redes con Igraph"
+author: "Karina Leyva"
+date: "30/3/2022"
+output:
+  pdf_document: default
+  html_document: default
+subtitle: Taller R-Ladies Guadalajara
+---
+# ¿Por qué utilizar el Análisis de Redes Sociales?
+
+Porque así podemos estudiar el comportamiento de los individuos a nivel micro, es decir en grupos pequeños, el patrón de relaciones a nivel macro, es decir en comunidades o sociedades, así como las interacciones entre individuos y la comunidad.
+
+
+**Importante** si bien el análisis de redes sociales parte de una teoría sociológica, tiene plicaciones en otras ciencias sociales como la historia, la antropología, la criminología o el trabjo social; también es útil para quienes se dedican a Ciencia de Datos, pues posibilita el entendimiento de relaciones entre personas, por ejemplo a traves de RRSS como Twitter.
+
+
+## Conceptos Básicos
+
+ Diani (2003) define una **red** es un conjunto de nodos unidos por algún tipo de relación y delimitados por algún criterio específico.
+
+**nodo/arista**ha sido definido por definido por Emerson (1960) como un *actor* que tiene una serie de vínculos de intercambio con otros actores. Estos nodos pueden ser individuos, organizaciones, comunidades o Estados.
+
+Las conexiones entre los nodos son **enlaces/vertices**. Estas conexiones pueden establecerse por medio del parentesco, por afinidad, por amistad, o en busca de colaborar por un objetivo común; las propiedades de los nodos y de los enlaces van a determinar el tipo de red.
+
+## Redes con Igraph
+```{r}
+library(igraph)
+```
+### Creando nuestas primeras redes
+
+Crearemos una red *no dirigida* con 3 nodos, en el código cada nodo es representado con un número
+
+NOTA: No dirigida significa que no sabemos si la conexión es recíproca
+
+
+```{r}
+red1 <- graph( edges=c(1,2, 2,3, 3, 1), n=3, directed=F )
+plot(red1)
+```
+Conozcamos las propiedades de nuestra red
+```{r}
+class(red1)
+red1
+```
+Obsérvese que nos muestra que nodos tienen conexiones entre sí.
+
+Ahora, crearemos una red con 15 nodos, pero manteniendo las mismas conexiones:
+```{r}
+red2<-graph(edges=c(1,2, 2,3, 3,1), n=15)
+plot(red2)
+```
+Vemos las propiedades
+
+```{r}
+red2
+```
+Ahora hagamos una red con nombres, en este caso cuando la lista de aristas tienen nombres de los vértices, no es necesario especificar en número de nodos.
+
+```{r}
+red3<-graph(c("Juan","Paco","Paco","Maria","Maria","Juan"))
+plot(red3)
+red3
+```
+Cuando usamos nombres, podemos especificar los nodos que están aislados, es decir que no tienen conexiones con otros.
+
+```{r}
+red4<-graph(c("Juan","Paco","Paco","Maria","Maria","Juan","Memo","Juan"),
+            isolates = c("Laura", "Isabel","Lalo","Alex"))
+plot(red4)
+red4
+```
+Contemos las conexiones y los vértices
+
+```{r}
+E(red4) #veamos las conexiones
+ecount(red4) #contemos conexiones
+```
+Ahora observemos los vertices o nodos que conforman nuestra red
+```{r}
+V(red4)
+vcount(red4)#contemos vertices
+```
+Utilizaremos **red4** para ejemplificar como usar matrices como base de redes en igraph
+
+```{r}
+red4[]
+```
+Ahora transformemos nuestra red en una matriz de adyacencia
+
+```{r}
+get.adjacency(red4,sparse = FALSE)
+```
+
+### Vecinos
+
+Igraph nos permite conocer a los vecinos más cercanos del individuo que queremos conocer
+
+```{r}
+neighbors(red4,"Paco")
+red4[["Paco"]]
+```
+Podemos trabajar con varios nodos
+
+```{r}
+red4[[c("Paco","Memo")]]
+```
+## Atributos de la red
+
+Podemos obtener los atributos que conforman nuestra red
+```{r}
+V(red4)$name #automáticamente se crea la columna "name"
+```
+Ahora asiganremos el género de las personas en nuestra red
+
+```{r}
+V(red4)$genero<-c('hombre','hombre','mujer','hombre','mujer','mujer','hombre','hombre')
+#Obtengamos el género de los vecinos de "Memo"
+vertex_attr(red4)
+neighbors(red4,"Memo",mode = "all")$genero
+```
+Graficamos esos atributos
+```{r}
+plot(red4,edge.arrow.size=0.5,vertex.label.color="black",vertex.label.dist=1.5,
+     vertex.color=as.factor(V(red4)$genero))
+```
+## ¿Tiene alguna aplicación social?
+¡Por supuesto! en la investigación "Mujeres tejiendo utopías" he utilizado SNA para identificar redes de mujeres activistas
+```{r}
+#Para importar una base de datos desde un archivo .csv, se utiliza la función **read.csv**
+
+data<-read.csv('red2.csv',header = TRUE)
+
+```
+### Diagrama de red
+El código para crear una red a partir de la base de datos que se ha importado es el siguiente
+donde y= al fragmento de la base de datos que estamos tomando
+net= al nombre que estamos dando a la red que estamos creando a partir de "y"
+
+```{r}
+colnames(data)
+y<-data.frame(data$ï..first,data$second)
+net<-graph.data.frame(y, directed=T)
+V(net)
+```
+En el siguiente código se observa que se ha manipulado el tamaño, el color y la distancia de los nodos, resalta que el tamaño de los nodos ha sido determinado a partír del cáculo de la centralidad de grado. También se ha manipulado tamaño y el color de los vínculos, y se ha indicado que se muestre la dirección de éstos con el objetivo de obtener una visualización óptima de la red.
+
+```{r}
+ plot.igraph(net,
+             vertex.color=rainbow(24),
+             vertex.size=15,
+             vertex.label.dist=2,
+             vertex.label.cex=.5,
+             edge.arrow.size= 0.2,
+             edge.color="black",
+              directed=T,
+              layout=layout_nicely)
+
+dg<-degree(net,mode="all")
+dg
+dg<-degree(net,mode="in",normalized=T)
+V(net)$size<-dg
+plot.igraph(net,
+            vertex.color=rainbow(15),
+            vertex.shape = "circle",
+            vertex.size= dg*50,
+            vertex.label.dist=1,
+            vertex.label.cex=0.5,
+            edge.arrow.size= 0.1,
+            edge.color="black",
+            edge.width = 0.5,
+            directed=T,
+            layout=layout.kamada.kawai)
+
+```
+
+### Analizando las redes de Game of Thrones
+
+Créditos por csv: YunranChen (https://github.com/YunranChen/STA650Lab/blob/master/lab2_igraph2/gotstark_lannister.csv)
+
+**Para comenzar** carguemos los datos desde un archivo csv
+
+```{r}
+gotdf<-read.csv("got_matriz.csv",stringsAsFactors = FALSE)
+head(gotdf,5)
+```
+Ahora seleccionaremos fuente, objetivo y pesos  y agruparemos
+
+```{r}
+library(dplyr)
+library(tidyr)
+
+gotdf.el=gotdf%>%select(source,target,weight)%>%
+  group_by(source,target)%>%
+  expand(edge=c(1:weight))%>%select(-edge)
+head(gotdf.el)
+```
+Para poder manipular nuestros datos, necesitamos que provengan de una matriz
+
+```{r}
+got1=graph_from_edgelist(gotdf.el%>%as.matrix(),directed = FALSE)
+got1
+```
+
+Pasaremos a graficas nuestro got1
+
+```{r}
+plot(got1,edge.arrow.size=.5, vertex.color="gold", vertex.size=3, 
+     vertex.frame.color="black", vertex.label.color="black", 
+     vertex.label.cex=.5, vertex.label.dist=2, edge.curved=0.2)
+```
+Para manejar nuestras redes lo mejor es  tulizar *lo más común y útil:*una matriz de datos que contiene una lista de nodos  en las dos primeras columnas. Las columnas adicionales se consideran atributos.
+
+```{r}
+gotdf=gotdf%>%select(-x)
+got2=graph_from_data_frame(d=gotdf,directed = FALSE)
+got2
+```
+```{r}
+plot(got2,edge.arrow.size=.5, vertex.color="gold", vertex.size=3, 
+     vertex.frame.color="gray", vertex.label.color="black", 
+     vertex.label.cex=.5, vertex.label.dist=2, edge.curved=0.5,layout=layout_with_lgl)
+```
+## Visualización
+
+-Trazado de parámetros: asignación de atributos importantes a propiedades visuales
+-Encontrar un buen diseño
+
+```{r}
+?igraph.plotting
+```
+Para que el gráfico se vea mejor
+-Color de nodo: utilizando el apellido
+-Tamaño del nodo: grado
+-Ancho del borde: peso
+
+Obtengamos el nombre de la familia a la que pertenecen nuestros personajes
+```{r}
+fullnames=V(got2)$name
+fullnames[1:3]
+```
+Extraigamos el apellido de la familia a la que pertence
+Para ello podemos usar la librería "stringr "
+```{r}
+library(stringr)
+#familynames=fullnames%>%str_split("-",simplify = TRUE)%>%.[,2]
+familynames[familynames==""]="None"
+familynames[familynames=="(guard)"]="None"
+V(got2)$familyname=familynames
+V(got2)$fullname=fullnames
+V(got2)$name=nameshort # first nam
+```
+Asignaremos el color a cada familia
+
+```{r}
+vcol=V(got2)$familyname
+vcol[(vcol!="Stark")&(vcol!="Lannister")]="gray50"
+vcol[vcol=="Stark"]="tomato"
+vcol[vcol=="Lannister"]="gold"
+
+
+```
+
+Pasamos a graficar nuestra red
+
+```{r}
+V(got2)$color=vcol
+V(got2)$size=igraph::degree(got2)%>%log()*4
+E(got2)$width=E(got2)$weight%>%log()/2
+plot(got2, vertex.label.color="black", 
+     vertex.label.cex=.5, vertex.label.dist=2, edge.curved=0.5,layout=layout_with_kk)
+legend("right", legend = c("Stark","Lannister","Other"), pch=21,
+       col=c("tomato","gold","gray50"), pt.bg=c("tomato","gold","gray50"), pt.cex=1, cex=.8, bty="n", ncol=1)
+```
+Para mejorar la visualización se sugiere utilizar alguno de los algoritmos recomedados para gráficos grandes, en este caso usaremos el algoritmo de recocido simulado por Davidson y Harel
+```{r}
+#layout_with_dh
+plot(got2, vertex.label.color="black", 
+     vertex.label.cex=.5,vertex.label.dist=0.2, edge.curved=0.5,layout=layout_with_dh)
+legend("right", legend = c("Stark","Lannister","Other"), pch=21,
+       col=c("tomato","gold","gray50"), pt.bg=c("tomato","gold","gray50"), pt.cex=1, cex=.8, bty="n", ncol=1)
+```
+Existen diferentes maneras de visualizar una red, por ejemplo con base en la fortaleza de sus vínculos
+```{r}
+set.seed(2)
+plot(got2, vertex.shape="none",vertex.label.color="black", 
+     vertex.label.cex=.5,vertex.label.dist=0.2, edge.curved=0.5,layout=layout_with_dh)
+```
+
+##Análisis de redes y nodos
+
+### Degree
+'degree' tiene un modo de 'in' para el grado de entrada, 'out' para el grado de salida, y 'all' o 'total' para el grado total.
+NOTA: Nuestro grafico no está dirigido por lo que contaremos los grados en total
+```{r}
+igraph::degree(got2, mode="in",loops = F)%>%sort(decreasing = TRUE)%>%.[1:5]
+```
+
+```{r}
+degree <- igraph::degree(got2, mode="all")
+hist(degree, breaks=1:vcount(got2)-1, main="Histograma del grado de nodos")
+```
+
+### Centralidad de grado (Closeness )
+```{r}
+
+igraph::closeness(got2, mode="all", weights=NA) %>%sort(decreasing = TRUE)%>%.[1:5]
+```
+###Eigenvector 
+```{r}
+eigen_centrality(got2, directed=F, weights=NA)$vector%>%sort(decreasing = TRUE)%>%.[1:5]
+```
+###Betweenness (centralidad basada en una posición de intermediario que conecta a otros)
+```{r}
+igraph::betweenness(got2, directed=F, weights=NA)%>%sort(decreasing = TRUE)%>%.[1:5]
+`
+```
+
